@@ -455,7 +455,7 @@ class EPub {
             $this->ncx->addNavPoint($navPoint);
             $this->ncx->chapterList[$chapterName] = $navPoint;*/
         }
-        return $navPoint;
+        return ;
     }
 	/**
 	 * Add one chapter level.
