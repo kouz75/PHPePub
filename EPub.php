@@ -1071,7 +1071,6 @@ if(isset($urlArray['extension'])){
     // $urlArray['extension']=substr($urlArray['extension'],0,strpos($urlArray['extension'],"#"));
     switch($urlArray['extension']){
         case 'eot';
-        case 'svg';
         case 'ttf';
         case 'woff';
             $imageData['image'] = $this->getFileContents($source);
