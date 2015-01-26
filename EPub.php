@@ -1077,6 +1077,10 @@ if(isset($urlArray['extension'])){
             $imageData['image'] = $this->getFileContents($source);
             $imageData['mime'] = "application/vnd.ms-fontobject";
             break;
+        case 'svg';
+            $imageData['image'] = $this->getFileContents($source);
+            $imageData['mime'] = "image/svg+xml";
+            break;            
         case '';
             break;
        default;
