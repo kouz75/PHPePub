@@ -6,7 +6,7 @@
  *
  * License: GNU LGPL, Attribution required for commercial implementations, requested for everything else.
  *
- * Thanks to: Adam Schmalhofer and Kirstyn Fox for invaluable input and for "nudging" me in the right direction :)
+ * Thanks to: Adam Schmalhofer and Kirstyn Fox for invsaluable input and for "nudging" me in the right direction :)
  *
  * @author A. Grandt <php@grandt.com>
  * @copyright 2009-2014 A. Grandt
@@ -132,7 +132,7 @@ class EPub {
      *
      * @return void
      */
-    function __construct($bookVersion = EPub::BOOK_VERSION_EPUB2, $languageCode = "en", $writingDirection = EPub::DIRECTION_LEFT_TO_RIGHT) {
+    function __construct($bookVersion = EPub::BOOK_VERSION_EPUB3, $languageCode = "en", $writingDirection = EPub::DIRECTION_LEFT_TO_RIGHT) {
         include_once("Zip.php");
 		include_once("Logger.php");
 
@@ -265,6 +265,7 @@ class EPub {
 
 		$this->zip->addFile($fileData, $this->bookRoot.$fileName, 0, NULL, $compress);
         $this->fileList[$fileName] = $fileName;
+
         $this->opf->addItem($fileId, $fileName, $mimetype);
         return TRUE;
     }
@@ -316,7 +317,6 @@ class EPub {
             if (!empty($cssDir)) {
                 $cssDir = preg_replace('#[^/]+/#i', "../", $cssDir);
             }
-
             $this->processCSSExternalReferences($fileData, $externalReferences, $baseDir, $cssDir);
         }
 
@@ -419,7 +419,44 @@ class EPub {
 		}
         return $navPoint;
     }
+    function addIntercalaire($chapterName, $fileName, $chapterData = NULL, $autoSplit = FALSE, $externalReferences = EPub::EXTERNAL_REF_IGNORE, $baseDir = "") {
+        if ($this->isFinalized) {
+            return FALSE;
+        }
+        $fileName = Zip::getRelativePath($fileName);
+        $fileName = preg_replace('#^[/\.]+#i', "", $fileName);
 
+        $chapter = $chapterData;
+        if ($autoSplit && is_string($chapterData) && mb_strlen($chapterData) > $this->splitDefaultSize) {
+            $splitter = new EPubChapterSplitter();
+
+            $chapterArray = $splitter->splitChapter($chapterData);
+            if (count($chapterArray) > 1) {
+                $chapter = $chapterArray;
+            }
+        }
+
+        if (!empty($chapter) && is_string($chapter)) {
+            if ($externalReferences !== EPub::EXTERNAL_REF_IGNORE) {
+                $htmlDirInfo = pathinfo($fileName);
+                $htmlDir = preg_replace('#^[/\.]+#i', "", $htmlDirInfo["dirname"] . "/");
+                $this->processChapterExternalReferences($chapter, $externalReferences, $baseDir, $htmlDir);
+            }
+
+            if ($this->encodeHTML === TRUE) {
+                $chapter = $this->encodeHtml($chapter);
+            }
+
+            $this->chapterCount++;
+            $this->addFile($fileName, "chapter" . $this->chapterCount, $chapter, "application/xhtml+xml");
+            $this->opf->addItemRef("chapter" . $this->chapterCount);
+
+           /* $navPoint = new NavPoint($this->decodeHtmlEntities($chapterName), $fileName, "chapter" . $this->chapterCount);
+            $this->ncx->addNavPoint($navPoint);
+            $this->ncx->chapterList[$chapterName] = $navPoint;*/
+        }
+        return $navPoint;
+    }
 	/**
 	 * Add one chapter level.
 	 *
@@ -763,20 +800,19 @@ class EPub {
         $backPath = preg_replace('#[^/]+/#i', "../", $cssDir);
         $imgs = null;
         preg_match_all('#url\s*\([\'\"\s]*(.+?)[\'\"\s]*\)#im', $cssFile, $imgs, PREG_SET_ORDER);
-
         $itemCount = count($imgs);
         for ($idx = 0; $idx < $itemCount; $idx++) {
             $img = $imgs[$idx];
             if ($externalReferences === EPub::EXTERNAL_REF_REMOVE_IMAGES || $externalReferences === EPub::EXTERNAL_REF_REPLACE_IMAGES) {
                 $cssFile = str_replace($img[0], "", $cssFile);
             } else {
+                if(strpos($img[0],"data:image")!==false) continue;
                 $source = $img[1];
 
                 $pathData = pathinfo($source);
                 $internalSrc = $pathData['basename'];
                 $internalPath = "";
                 $isSourceExternal = FALSE;
-
                 if ($this->resolveImage($source, $internalPath, $internalSrc, $isSourceExternal, $baseDir, $cssDir, $backPath)) {
                     $cssFile = str_replace($img[0], "url('" . $backPath . $internalPath . "')", $cssFile);
                 } else if ($isSourceExternal) {
@@ -902,7 +938,6 @@ class EPub {
 		
         for ($idx = 0; $idx < $itemCount; $idx++) {
             $img = $images->item($idx);
-
 			if ($externalReferences === EPub::EXTERNAL_REF_REMOVE_IMAGES) {
                 $postProcDomElememts[] = $img;
             } else if ($externalReferences === EPub::EXTERNAL_REF_REPLACE_IMAGES) {
@@ -914,8 +949,10 @@ class EPub {
                 $postProcDomElememts[] = array($img, $this->createDomFragment($xmlDoc, "<em>[" . $alt . "]</em>"));
             } else {
                 $source = $img->attributes->getNamedItem("src")->nodeValue;
-
-                $parsedSource = parse_url($source);
+                if(strpos($source,"base64")>0){
+                    continue;
+                }
+                    $parsedSource = parse_url($source);
                 $internalSrc = $this->sanitizeFileName(urldecode(pathinfo($parsedSource['path'], PATHINFO_BASENAME)));
                 $internalPath = "";
                 $isSourceExternal = FALSE;
@@ -1006,10 +1043,16 @@ class EPub {
         if ($this->isFinalized) {
             return FALSE;
         }
+
         $imageData  = NULL;
-		
+/*        if(strpos($source,"http://")!==false){
+
+        }else
+		$source="http://wwwwwwwwwww/".$source;
+		*/
         if (preg_match('#^(http|ftp)s?://#i', $source) == 1) {
             $urlinfo = parse_url($source);
+
 			$urlPath = pathinfo($urlinfo['path']);
 
             if (strpos($urlinfo['path'], $baseDir."/") !== FALSE) {
@@ -1017,8 +1060,36 @@ class EPub {
             }
             $internalPath = $urlinfo["scheme"] . "/" . $urlinfo["host"] . "/" . pathinfo($urlinfo["path"], PATHINFO_DIRNAME);
             $isSourceExternal = TRUE;
+             $urlArray=pathinfo($source);
+
+if(isset($urlArray['extension'])){
+
+    if(strpos($urlArray['extension'],"#"))
+        $urlArray['extension']=substr($urlArray['extension'],0,strpos($urlArray['extension'],"#"));
+    if(strpos($urlArray['extension'],"?"))
+        $urlArray['extension']=substr($urlArray['extension'],0,strpos($urlArray['extension'],"?"));
+    // $urlArray['extension']=substr($urlArray['extension'],0,strpos($urlArray['extension'],"#"));
+    switch($urlArray['extension']){
+        case 'eot';
+        case 'svg';
+        case 'ttf';
+        case 'woff';
+            $imageData['image'] = $this->getFileContents($source);
+            $imageData['mime'] = "application/vnd.ms-fontobject";
+            break;
+        case '';
+            break;
+       default;
             $imageData = $this->getImage($source);
+            break;
+    }
+
+}
+
+
+
         } else if (strpos($source, "/") === 0) {
+
             $internalPath = pathinfo($source, PATHINFO_DIRNAME);
 
 			$path = $source;
@@ -1028,6 +1099,7 @@ class EPub {
 
 			$imageData = $this->getImage($path);
         } else {
+
             $internalPath = $htmlDir . "/" . preg_replace('#^[/\.]+#', '', pathinfo($source, PATHINFO_DIRNAME));
 			
 			$path = $baseDir . "/" . $source;
@@ -1037,6 +1109,8 @@ class EPub {
 			
             $imageData = $this->getImage($path);
         }
+
+
         if ($imageData !== FALSE) {
 			$iSrcInfo = pathinfo($internalSrc);
 			if (!empty($imageData['ext']) && $imageData['ext'] != $iSrcInfo['extension']) {
@@ -1044,7 +1118,7 @@ class EPub {
     		}
             $internalPath = Zip::getRelativePath("images/" . $internalPath . "/" . $internalSrc);
         if (!array_key_exists($internalPath, $this->fileList)) {
-                $this->addFile($internalPath, "i_" . $internalSrc, $imageData['image'], $imageData['mime']);
+            $this->addFile($internalPath, "i_" . $internalSrc, $imageData['image'], $imageData['mime']);
                 $this->fileList[$internalPath] = $source;
             }
             return TRUE;
@@ -2159,8 +2233,9 @@ class EPub {
 
 		if ($ext === "") {
 			static $mimeToExt = array (
-				'image/jpeg' => 'jpg',
-				'image/gif' => 'gif',
+                'image/jpeg' => 'jpeg',
+                'image/jpeg' => 'jpg',
+                'image/gif' => 'gif',
 				'image/png' => 'png'
             );
 
