@@ -740,6 +740,10 @@ class EPub {
         $this->processChapterImages($xmlDoc, $externalReferences, $baseDir, $htmlDir, $backPath);
         $this->processChapterSources($xmlDoc, $externalReferences, $baseDir, $htmlDir, $backPath);
 
+    $doc = $xmlDoc->saveXML();
+    $doc= str_replace("<html>", "<html xmlns='http://www.w3.org/1999/xhtml'>", "$doc");
+    $doc= str_replace('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">', "", "$doc");
+return true;
         if ($isDocAString) {
             //$html = $xmlDoc->saveXML();
 
