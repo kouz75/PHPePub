@@ -1075,10 +1075,16 @@ if(isset($urlArray['extension'])){
     // $urlArray['extension']=substr($urlArray['extension'],0,strpos($urlArray['extension'],"#"));
     switch($urlArray['extension']){
         case 'eot';
-        case 'ttf';
-        case 'woff';
             $imageData['image'] = $this->getFileContents($source);
             $imageData['mime'] = "application/vnd.ms-fontobject";
+            break;
+        case 'ttf';
+            $imageData['image'] = $this->getFileContents($source);
+            $imageData['mime'] = "application/font-sfnt";
+            break;
+        case 'woff';
+            $imageData['image'] = $this->getFileContents($source);
+            $imageData['mime'] = "application/font-woff";
             break;
         case 'svg';
             $imageData['image'] = $this->getFileContents($source);
