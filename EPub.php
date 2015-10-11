@@ -104,7 +104,7 @@ class EPub
 
     private $bookRoot = "OEBPS/";
     private $docRoot = NULL;
-    private $EPubMark = TRUE;
+    private $EPubMark = false;
     private $generator = "";
 
     private $log = NULL;
