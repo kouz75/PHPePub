@@ -631,7 +631,7 @@ class EPub
      * @param string $mimetype Image mimetype, such as "image/jpeg" or "image/png".
      * @return bool $success
      */
-    function setCoverImage($fileName, $imageData = NULL, $mimetype = NULL)
+    function setCoverImage($fileName, $imageData = NULL, $mimetype = NULL,$pageName)
     {
         if ($this->isFinalized || $this->isCoverImageSet || array_key_exists("CoverPage.html", $this->fileList)) {
             return FALSE;
@@ -712,7 +712,7 @@ class EPub
 
         $this->addCSSFile("Styles/CoverPage.css", "CoverPageCss", $coverPageCss);
         $this->addFile($imgPath, "CoverImage", $imageData, $mimetype);
-        $this->addReferencePage("CoverPage", "CoverPage.xhtml", $coverPage, "cover");
+        $this->addReferencePage($pageName, "CoverPage.xhtml", $coverPage, "cover");
         $this->isCoverImageSet = TRUE;
         return TRUE;
     }
