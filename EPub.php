@@ -2299,7 +2299,7 @@ class EPub
 
                     imagecopyresampled($image_p, $image_o, 0, 0, 0, 0, ($width * $ratio), ($height * $ratio), $width, $height);
                     ob_start();
-                    imagepng($image_p, NULL, 9);
+                    imagepng($image_p, NULL, 3);
                     $image = ob_get_contents();
                     ob_end_clean();
 
